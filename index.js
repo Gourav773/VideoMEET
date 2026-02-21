@@ -130,23 +130,35 @@
 //   console.log("✅ Server running on http://localhost:5050");
 // });
 
+import dotenv from "dotenv";
+dotenv.config();
 
 import express from "express";
-import mysql from "mysql";
 import cors from "cors";
 import axios from "axios";
 import jwt from "jsonwebtoken";
 import multer from "multer";
 import fs from "fs";
-import path from "path";
-import dotenv from "dotenv";
-dotenv.config();
 
 const app = express();
 app.use(express.json());
 app.use(cors());
 
-dotenv.config();
+/* =======================
+   ✅ ENV VARIABLES CHECK
+======================= */
+const ACCESS_KEY = process.env.ACCESS_KEY;
+const SECRET = process.env.SECRET;
+const TEMPLATE_ID = process.env.TEMPLATE_ID;
+
+if (!ACCESS_KEY || !SECRET || !TEMPLATE_ID) {
+  console.log("❌ ENV VARIABLES MISSING");
+  process.exit(1);
+}
+
+console.log("✅ ACCESS_KEY Loaded");
+console.log("✅ SECRET Loaded");
+console.log("✅ TEMPLATE_ID Loaded");
 
 /* =======================
    📁 Ensure Upload Folder
@@ -171,29 +183,6 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 /* =======================
-   🗄 MySQL Connection
-======================= */
-const conn = mysql.createConnection({
-  host: "localhost",
-  user: "root",
-  password: "",
-  database: "video",
-});
-
-conn.connect((err) => {
-  if (err) console.log("❌ MySQL connection error:", err);
-  else console.log("✅ Connected to MySQL");
-});
-
-/* =======================
-   🔑 100ms Config
-======================= */
-const ACCESS_KEY = process.env.ACCESS_KEY;
-const SECRET = process.env.SECRET;
-const TEMPLATE_ID = process.env.TEMPLATE_ID;
-console.log("ACCESS_KEY:", ACCESS_KEY);
-console.log("SECRET loaded:", !!SECRET);
-console.log("TEMPLATE_ID:", TEMPLATE_ID);/* =======================
    🔐 Generate Management Token
 ======================= */
 function generateManagementToken() {
@@ -232,15 +221,11 @@ app.post("/create-room", async (req, res) => {
       }
     );
 
-    const roomData = response.data;
+    res.json({ success: true, room: response.data });
 
-    const sql = "INSERT INTO tbl_rooms (room_id, name) VALUES (?, ?)";
-    conn.query(sql, [roomData.id, roomData.name]);
-
-    res.json({ success: true, room: roomData });
   } catch (err) {
     console.error("❌ Room Error:", err.response?.data || err.message);
-    res.status(500).json({ success: false });
+    res.status(500).json({ success: false, message: "Room creation failed" });
   }
 });
 
@@ -251,7 +236,7 @@ app.post("/get-token", (req, res) => {
   const { room_id, user_id, role } = req.body;
 
   if (!room_id || !user_id || !role) {
-    return res.status(400).json({ success: false });
+    return res.status(400).json({ success: false, message: "Missing fields" });
   }
 
   try {
@@ -271,9 +256,10 @@ app.post("/get-token", (req, res) => {
     });
 
     res.json({ success: true, token });
+
   } catch (err) {
     console.error("❌ Token Error:", err.message);
-    res.status(500).json({ success: false });
+    res.status(500).json({ success: false, message: "Token generation failed" });
   }
 });
 
@@ -293,6 +279,7 @@ app.post("/addrecording", upload.single("recording"), (req, res) => {
       message: "Recording uploaded successfully",
       file: req.file.filename,
     });
+
   } catch (err) {
     console.error("❌ Upload Error:", err);
     res.status(500).json({ success: false });
@@ -300,8 +287,10 @@ app.post("/addrecording", upload.single("recording"), (req, res) => {
 });
 
 /* =======================
-   🚀 Start Server
+   🚀 Start Server (Render Compatible)
 ======================= */
-app.listen(5050, () => {
-  console.log("✅ Server running on http://localhost:5050");
+const PORT = process.env.PORT || 5050;
+
+app.listen(PORT, () => {
+  console.log(`✅ Server running on port ${PORT}`);
 });
