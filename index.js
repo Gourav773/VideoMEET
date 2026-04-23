@@ -130,6 +130,172 @@
 //   console.log("✅ Server running on http://localhost:5050");
 // });
 
+// import dotenv from "dotenv";
+// dotenv.config();
+
+// import express from "express";
+// import cors from "cors";
+// import axios from "axios";
+// import jwt from "jsonwebtoken";
+// import multer from "multer";
+// import fs from "fs";
+
+// const app = express();
+// app.use(express.json());
+// app.use(cors());
+
+// /* =======================
+//    ✅ ENV VARIABLES CHECK
+// ======================= */
+// const ACCESS_KEY = process.env.ACCESS_KEY;
+// const SECRET = process.env.SECRET;
+// const TEMPLATE_ID = process.env.TEMPLATE_ID;
+
+// if (!ACCESS_KEY || !SECRET || !TEMPLATE_ID) {
+//   console.log("❌ ENV VARIABLES MISSING");
+//   process.exit(1);
+// }
+
+// console.log("✅ ACCESS_KEY Loaded");
+// console.log("✅ SECRET Loaded");
+// console.log("✅ TEMPLATE_ID Loaded");
+
+// /* =======================
+//    📁 Ensure Upload Folder
+// ======================= */
+// const uploadDir = "./uploads";
+// if (!fs.existsSync(uploadDir)) {
+//   fs.mkdirSync(uploadDir);
+// }
+
+// /* =======================
+//    📤 Multer Setup
+// ======================= */
+// const storage = multer.diskStorage({
+//   destination: (req, file, cb) => {
+//     cb(null, uploadDir);
+//   },
+//   filename: (req, file, cb) => {
+//     cb(null, Date.now() + "-" + file.originalname);
+//   },
+// });
+
+// const upload = multer({ storage });
+
+// /* =======================
+//    🔐 Generate Management Token
+// ======================= */
+// function generateManagementToken() {
+//   const payload = {
+//     access_key: ACCESS_KEY,
+//     type: "management",
+//     version: 2,
+//     jti: Date.now().toString(),
+//   };
+
+//   return jwt.sign(payload, SECRET, {
+//     algorithm: "HS256",
+//     expiresIn: "24h",
+//   });
+// }
+
+// /* =======================
+//    🟢 Create Room
+// ======================= */
+// app.post("/create-room", async (req, res) => {
+//   try {
+//     const { name } = req.body;
+//     const mgmtToken = generateManagementToken();
+
+//     const response = await axios.post(
+//       "https://api.100ms.live/v2/rooms",
+//       {
+//         name: name || `room-${Date.now()}`,
+//         template_id: TEMPLATE_ID,
+//       },
+//       {
+//         headers: {
+//           Authorization: `Bearer ${mgmtToken}`,
+//           "Content-Type": "application/json",
+//         },
+//       }
+//     );
+
+//     res.json({ success: true, room: response.data });
+
+//   } catch (err) {
+//     console.error("❌ Room Error:", err.response?.data || err.message);
+//     res.status(500).json({ success: false, message: "Room creation failed" });
+//   }
+// });
+
+// /* =======================
+//    🎟 Generate Join Token
+// ======================= */
+// app.post("/get-token", (req, res) => {
+//   const { room_id, user_id, role } = req.body;
+
+//   if (!room_id || !user_id || !role) {
+//     return res.status(400).json({ success: false, message: "Missing fields" });
+//   }
+
+//   try {
+//     const payload = {
+//       access_key: ACCESS_KEY,
+//       room_id,
+//       user_id,
+//       role,
+//       type: "app",
+//       version: 2,
+//       jti: Date.now().toString(),
+//     };
+
+//     const token = jwt.sign(payload, SECRET, {
+//       algorithm: "HS256",
+//       expiresIn: "24h",
+//     });
+
+//     res.json({ success: true, token });
+
+//   } catch (err) {
+//     console.error("❌ Token Error:", err.message);
+//     res.status(500).json({ success: false, message: "Token generation failed" });
+//   }
+// });
+
+// /* =======================
+//    🎥 Upload Recording
+// ======================= */
+// app.post("/addrecording", upload.single("recording"), (req, res) => {
+//   try {
+//     if (!req.file) {
+//       return res.status(400).json({ success: false, message: "No file uploaded" });
+//     }
+
+//     console.log("Recording Saved:", req.file.filename);
+
+//     res.json({
+//       success: true,
+//       message: "Recording uploaded successfully",
+//       file: req.file.filename,
+//     });
+
+//   } catch (err) {
+//     console.error("❌ Upload Error:", err);
+//     res.status(500).json({ success: false });
+//   }
+// });
+
+// /* =======================
+//    🚀 Start Server (Render Compatible)
+// ======================= */
+// const PORT = process.env.PORT || 5050;
+
+// app.listen(PORT, () => {
+//   console.log(`✅ Server running on port ${PORT}`);
+// });
+
+
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -143,6 +309,20 @@ import fs from "fs";
 const app = express();
 app.use(express.json());
 app.use(cors());
+
+/* =======================
+   🌐 ROOT + HEALTH ROUTE
+======================= */
+app.get("/", (req, res) => {
+  res.json({
+    status: "success",
+    message: "VideoMeet Backend is Live 🚀",
+  });
+});
+
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "OK" });
+});
 
 /* =======================
    ✅ ENV VARIABLES CHECK
@@ -200,7 +380,7 @@ function generateManagementToken() {
 }
 
 /* =======================
-   🟢 Create Room
+   🟢 CREATE ROOM
 ======================= */
 app.post("/create-room", async (req, res) => {
   try {
@@ -221,22 +401,31 @@ app.post("/create-room", async (req, res) => {
       }
     );
 
-    res.json({ success: true, room: response.data });
+    res.json({
+      success: true,
+      room: response.data,
+    });
 
   } catch (err) {
     console.error("❌ Room Error:", err.response?.data || err.message);
-    res.status(500).json({ success: false, message: "Room creation failed" });
+    res.status(500).json({
+      success: false,
+      message: "Room creation failed",
+    });
   }
 });
 
 /* =======================
-   🎟 Generate Join Token
+   🎟 GENERATE JOIN TOKEN
 ======================= */
 app.post("/get-token", (req, res) => {
   const { room_id, user_id, role } = req.body;
 
   if (!room_id || !user_id || !role) {
-    return res.status(400).json({ success: false, message: "Missing fields" });
+    return res.status(400).json({
+      success: false,
+      message: "room_id, user_id, role required",
+    });
   }
 
   try {
@@ -255,21 +444,30 @@ app.post("/get-token", (req, res) => {
       expiresIn: "24h",
     });
 
-    res.json({ success: true, token });
+    res.json({
+      success: true,
+      token,
+    });
 
   } catch (err) {
     console.error("❌ Token Error:", err.message);
-    res.status(500).json({ success: false, message: "Token generation failed" });
+    res.status(500).json({
+      success: false,
+      message: "Token generation failed",
+    });
   }
 });
 
 /* =======================
-   🎥 Upload Recording
+   🎥 UPLOAD RECORDING
 ======================= */
 app.post("/addrecording", upload.single("recording"), (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ success: false, message: "No file uploaded" });
+      return res.status(400).json({
+        success: false,
+        message: "No file uploaded",
+      });
     }
 
     console.log("Recording Saved:", req.file.filename);
@@ -282,12 +480,15 @@ app.post("/addrecording", upload.single("recording"), (req, res) => {
 
   } catch (err) {
     console.error("❌ Upload Error:", err);
-    res.status(500).json({ success: false });
+    res.status(500).json({
+      success: false,
+      message: "Upload failed",
+    });
   }
 });
 
 /* =======================
-   🚀 Start Server (Render Compatible)
+   🚀 START SERVER
 ======================= */
 const PORT = process.env.PORT || 5050;
 
